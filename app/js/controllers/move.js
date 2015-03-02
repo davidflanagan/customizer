@@ -1,5 +1,7 @@
 /* global Controller */
 
+/* global AddonGenerator */
+
 export default class MoveController extends Controller {
   constructor(options) {
     super(options);
@@ -20,22 +22,55 @@ export default class MoveController extends Controller {
   }
 
   select() {
+    this.destination = this.view.domTree.selectedNode;
     this.view.dialog.open();
   }
 
   before() {
+    var generator = new AddonGenerator(this.target);
+    generator.manifest.customizations = [{
+      filter: window.location.origin,
+      scripts: ['main.js']
+    }];
+    generator.moveBefore(this.destination);
+    this.mainController.installAddon(generator.generate());
+
     this.view.modal.close();
   }
 
   after() {
+    var generator = new AddonGenerator(this.target);
+    generator.manifest.customizations = [{
+      filter: window.location.origin,
+      scripts: ['main.js']
+    }];
+    generator.moveAfter(this.destination);
+    this.mainController.installAddon(generator.generate());
+
     this.view.modal.close();
   }
 
   prepend() {
+    var generator = new AddonGenerator(this.target);
+    generator.manifest.customizations = [{
+      filter: window.location.origin,
+      scripts: ['main.js']
+    }];
+    generator.movePrepend(this.destination);
+    this.mainController.installAddon(generator.generate());
+
     this.view.modal.close();
   }
 
   append() {
+    var generator = new AddonGenerator(this.target);
+    generator.manifest.customizations = [{
+      filter: window.location.origin,
+      scripts: ['main.js']
+    }];
+    generator.moveAppend(this.destination);
+    this.mainController.installAddon(generator.generate());
+
     this.view.modal.close();
   }
 }
