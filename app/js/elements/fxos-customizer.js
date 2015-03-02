@@ -87,17 +87,56 @@ proto._watchScrolling = function() {
   }, true);
 };
 
+/**
+ * Helper to walk the entire DOM, resolving shadow roots to their shadow hosts
+ * along the way.
+ */
+proto._walkShadowTree = function(el, cb) {
+  if (!el || el == document.documentElement) {
+    return null;
+  } else if (cb(el)) {
+    return el;
+  }
+
+  return this._walkShadowTree(el.parentNode || el.host, cb);
+};
+
+/**
+ * Checks if an element is attached anywhere to the DOM, including inside a
+ * shadow DOM.
+ */
 proto._shadowContains = function(el) {
+  return this._walkShadowTree(el, (node) => node == document.body);
+};
+
+/**
+ * Checks if an element is attached anywhere to the Customizer, including inside
+ * a shadow DOM.
+ */
+proto._customizerContains = function(el) {
   var customizerRootView =
     document.body.querySelector('.fxos-customizer-main-view');
 
-  if (!el || el == document.documentElement) {
-    return false;
-  } else if (el == customizerRootView) {
-    return true;
+  return this._walkShadowTree(el, (node) => node == customizerRootView);
+};
+
+/**
+ * Selects the currently selected element, or if it was deleted/detached, its
+ * nearest parent.
+ */
+proto._selectNearest = function() {
+  if (!this._selected || !this._selectionTree || !this._selectionTree.length) {
+    return;
   }
 
-  return this._shadowContains(el.parentNode || el.host);
+  var selection;
+  for (var i = 0; i < this._selectionTree.length; i++) {
+    selection = this._selectionTree[i];
+    if (this._shadowContains(selection)) {
+      this.select(selection);
+      return;
+    }
+  }
 };
 
 proto.watchChanges = function() {
@@ -112,9 +151,10 @@ proto.watchChanges = function() {
     // Only re-render if a mutation occurred outside of the <fxos-customizer>
     // shadow root.
     for (var i = mutations.length - 1; i >= 0; i--) {
-      if (!this._shadowContains(mutations[i].target)) {
-        console.log(mutations[i].target.outerHTML);
+      if (!this._customizerContains(mutations[i].target)) {
         this.gaiaDomTree.render();
+        // Restore selection, or set it to the closest remaining parent.
+        this._selectNearest();
         return;
       }
     }
@@ -127,8 +167,22 @@ proto.unwatchChanges = function() {
   this._observer.disconnect();
 };
 
-proto.select = function(node) {
-  this.gaiaDomTree.select(node);
+/**
+ * Builds a flattened version of the path from a selection node up to the
+ * document root, resolving shadow roots to shadow hosts along the way.
+ */
+proto._buildSelectionTree = function(el) {
+  this._selected = el;
+  this._selectionTree = [];
+  this._walkShadowTree(el, (node) => {
+    this._selectionTree.push(node);
+    return false;
+  });
+};
+
+proto.select = function(el) {
+  this.gaiaDomTree.select(el);
+  this._buildSelectionTree(el);
 };
 
 proto._handleMenuAction = function(e) {
@@ -145,12 +199,13 @@ proto._handleSelected = function(e) {
   e.stopPropagation();
 
   var selectedNode = this.gaiaDomTree.selectedNode;
-
-  this._selected = (selectedNode.nodeType === Node.TEXT_NODE) ?
-    selectedNode.parentNode : selectedNode;
+  if (selectedNode.nodeType === Node.TEXT_NODE) {
+    selectedNode = selectedNode.parentNode;
+  }
+  this._buildSelectionTree(selectedNode);
 
   this.dispatchEvent(new CustomEvent('selected', {
-    detail: this._selected
+    detail: selectedNode
   }));
 };
 
