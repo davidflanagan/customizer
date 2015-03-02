@@ -11,7 +11,6 @@ export default class MoveController extends Controller {
     this.view.domTree.filter = '#' + this.mainController.view.el.id;
     this.view.domTree.setRoot(document.documentElement);
     this.view.domTree.render();
-    this.view.domTree.unwatchChanges();
 
     this.view.modal.open();
   }
@@ -20,7 +19,23 @@ export default class MoveController extends Controller {
     this.view.modal.close();
   }
 
-  action() {
+  select() {
+    this.view.dialog.open();
+  }
 
+  before() {
+    this.view.modal.close();
+  }
+
+  after() {
+    this.view.modal.close();
+  }
+
+  prepend() {
+    this.view.modal.close();
+  }
+
+  append() {
+    this.view.modal.close();
   }
 }
